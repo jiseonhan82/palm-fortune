@@ -6,8 +6,8 @@
 
 | | |
 |---|---|
-| **라이브 링크** | https://ouiwefilm-cloud.github.io/palm-fortune/ (영구, GitHub Pages) |
-| **저장소** | https://github.com/ouiwefilm-cloud/palm-fortune (public) |
+| **라이브 링크** | https://jiseonhan82.github.io/palm-fortune/ (영구, GitHub Pages) |
+| **저장소** | https://github.com/jiseonhan82/palm-fortune (public) |
 | **정체** | 토스 **앱인토스 WebView 미니앱** — 손바닥 촬영 → 손금 풀이 + 오늘의 운세 |
 | **스택** | Vite + React 18 + TypeScript + emotion (심사 전 TDS 이관 예정) |
 | **배포** | `main`에 push → GitHub Actions가 자동 빌드·Pages 배포 |
@@ -19,7 +19,7 @@
 **전제:** Node 20+ (CI는 20 사용), git, (배포하려면) GitHub 로그인.
 
 ```bash
-git clone https://github.com/ouiwefilm-cloud/palm-fortune.git
+git clone https://github.com/jiseonhan82/palm-fortune.git
 cd palm-fortune
 npm install
 npm run dev          # http://localhost:5173  (브라우저 데모)

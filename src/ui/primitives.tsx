@@ -14,13 +14,15 @@ export function Screen({ children, center }: { children: ReactNode; center?: boo
         position: relative;
         width: 100%;
         max-width: ${theme.maxWidth};
-        min-height: 100dvh;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
         ${center ? 'justify-content: center;' : ''}
         padding: max(env(safe-area-inset-top), 20px) 20px max(env(safe-area-inset-bottom), 20px);
         background: radial-gradient(120% 80% at 50% -10%, ${theme.color.panel} 0%, ${theme.color.bg} 45%, ${theme.color.bgDeep} 100%);
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
       `}
     >
       <StarField />
