@@ -30,6 +30,7 @@ export function CoupleInviteScreen({
   const [error, setError] = useState<string | null>(null);
   const [invite, setInvite] = useState<CoupleInvite | null>(null);
   const [shareUrl, setShareUrl] = useState('');
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -82,11 +83,12 @@ export function CoupleInviteScreen({
   }
 
   async function handleShare() {
-    await shareText({
+    const result = await shareText({
       title: '커플 궁합 리포트',
       text: `내 손금 「${reading.rare.name}」과 네 손금, 궁합이 어떨지 확인해봐! 🖐️💕`,
       url: shareUrl,
     });
+    setShareMsg(result === 'copied' ? '링크가 복사됐어요! 카톡·문자에 붙여넣기 해주세요 📋' : null);
   }
 
   if (phase === 'waiting') {
@@ -124,6 +126,11 @@ export function CoupleInviteScreen({
             <Button variant="gold" onClick={handleShare} disabled={!shareUrl}>
               💌 초대 링크 보내기
             </Button>
+            {shareMsg && (
+              <p css={css`margin: 0; font-size: 12px; color: ${theme.color.gold}; text-align: center;`}>
+                {shareMsg}
+              </p>
+            )}
             <Button variant="ghost" onClick={onClose}>
               나중에 결과 보기
             </Button>

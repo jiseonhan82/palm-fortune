@@ -133,14 +133,18 @@ export async function purchase(
 }
 
 // ── 공유 ────────────────────────────────────────────────
-export async function shareText(payload: { title?: string; text?: string; url?: string }): Promise<void> {
+// 'sent'=네이티브 공유 시트로 전달됨, 'copied'=클립보드에 복사됨(공유 시트가 아예 없는 환경),
+// 'noop'=사용자가 취소했거나 아무 방법도 못 씀 — 화면에서 상황에 맞는 안내를 보여주는 데 씀.
+export type ShareResult = 'sent' | 'copied' | 'noop';
+
+export async function shareText(payload: { title?: string; text?: string; url?: string }): Promise<ShareResult> {
   const sdk = await loadSdk();
   // 앱인토스 v3 SDK는 Share.sendMessage({ message }) 하나만 제공함 (텍스트만, 파일 공유 불가).
   if (sdk?.Share?.sendMessage) {
     const message = [payload.title, payload.text, payload.url].filter(Boolean).join('\n');
     try {
       await sdk.Share.sendMessage({ message });
-      return;
+      return 'sent';
     } catch {
       /* 폴백으로 진행 */
     }
@@ -148,11 +152,23 @@ export async function shareText(payload: { title?: string; text?: string; url?: 
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share(payload);
-      return;
-    } catch {
-      /* 사용자 취소 등 */
+      return 'sent';
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return 'noop'; // 사용자가 공유 시트에서 직접 취소
+      /* 그 외 실패는 아래 클립보드 폴백으로 계속 진행 */
     }
   }
+  // 공유 시트 자체가 없는 환경(데스크톱 브라우저 등) — 클립보드 복사로 폴백
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    const text = [payload.title, payload.text, payload.url].filter(Boolean).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      return 'copied';
+    } catch {
+      /* 무시 */
+    }
+  }
+  return 'noop';
 }
 
 // ── 초대 링크 (커플 궁합) ─────────────────────────────────

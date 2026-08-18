@@ -1,5 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
+import { useState } from 'react';
 import { shareText } from '../lib/bridge';
 import { theme } from '../theme';
 import type { CoupleInvite, CoupleReading } from '../types';
@@ -14,11 +15,14 @@ export function CoupleResultScreen({
   invite: CoupleInvite;
   onRestart: () => void;
 }) {
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+
   async function handleShare() {
-    await shareText({
+    const result = await shareText({
       title: '커플 궁합 리포트',
       text: `우리 궁합 결과: ${coupleReading.overallTag} (${coupleReading.overallScore}점) 🖐️💕`,
     });
+    setShareMsg(result === 'copied' ? '결과가 클립보드에 복사됐어요 📋' : null);
   }
 
   return (
@@ -75,6 +79,11 @@ export function CoupleResultScreen({
         <Button variant="gold" onClick={handleShare}>
           📸 궁합 결과 공유하기
         </Button>
+        {shareMsg && (
+          <p css={css`margin: -4px 0 0; font-size: 12px; color: ${theme.color.gold}; text-align: center;`}>
+            {shareMsg}
+          </p>
+        )}
         <Button variant="ghost" onClick={onRestart}>
           처음으로
         </Button>
