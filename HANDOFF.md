@@ -119,7 +119,7 @@ git add -A && git commit -m "..." && git push
 
 카메라/IAP/공유/저장은 `bridge/index.ts`가 실제 토스 앱 WebView 안에서 SDK를 감지해 네이티브로 호출하고, 그 밖(브라우저)에선 자동 폴백함.
 
-## 6-1. 커플 궁합 리포트 — ✅ 코드 구현 완료 (Supabase 연결만 남음)
+## 6-1. 커플 궁합 리포트 — ✅ 완료 (Supabase 연결 + 실제 2인 테스트까지 검증됨)
 
 이 프로젝트에서 처음으로 백엔드(Supabase)가 필요한 기능. 설계 원칙:
 - **초대자만 결제**, 파트너는 링크만 열면 무료
@@ -132,10 +132,9 @@ git add -A && git commit -m "..." && git push
 3. 양쪽 시드가 모이면 [generateCoupleReading](src/lib/reading/coupleEngine.ts)이 **두 시드를 정렬 후 결합**해 새 시드를 만들고, 그걸로 궁합 콘텐츠 조립(개인 엔진과 동일한 $0·결정론적 방식 — 서버 연산 없음, 누가 초대했는지와 무관하게 항상 같은 결과)
 4. 초대자는 폴링이 완료를 감지하면, 파트너는 촬영 직후 곧바로 [CoupleResultScreen](src/screens/CoupleResultScreen.tsx)으로 각자 진입
 
-**남은 건 사람이 해야 함:**
-1. https://supabase.com 프로젝트 생성 → SQL Editor에서 [supabase/schema.sql](supabase/schema.sql) 실행
-2. Project Settings → API에서 URL/anon key 확인 → 로컬은 `.env`(← `.env.example` 복사), GitHub Actions는 **저장소 Settings → Secrets and variables → Actions**에 `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` 등록 (`.github/workflows/deploy.yml`이 이미 이 secrets를 참조하도록 되어 있음)
-3. 값이 없으면 `isCoupleFeatureAvailable()`이 false를 반환해 결과 화면에서 "궁합 보기" 카드가 자동으로 숨겨짐(안전한 기본값) — 즉 지금 당장 GH Pages에 반영해도 문제없음
+**완료 상태:** Supabase 프로젝트(`palmlab`, Project ID `qasgpachnvupkoecjjom`) 생성 완료 → `schema.sql` 실행 완료 → 로컬 `.env` + GitHub Actions secrets(`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`) 등록 완료 → **브라우저 두 탭으로 실제 초대 생성 → 파트너 참여 → 양쪽 다 같은 궁합 결과 확인**까지 실제 DB로 검증 완료. 값이 없으면 `isCoupleFeatureAvailable()`이 false를 반환해 "궁합 보기" 카드가 자동 숨김되는 안전장치도 그대로 유지.
+
+**참고:** Supabase의 API 키 체계가 최근 바뀌어서, 콘솔에 "anon key" 대신 **"Publishable key"**(`sb_publishable_...`)로 표시됨 — 이름만 다르고 역할·`createClient()` 사용법은 완전히 동일(호환 확인됨).
 
 **알려진 한계 (v1, 의도적으로 단순화):**
 - RLS가 인증 없이 "id를 아는 사람 누구나 읽기/쓰기 가능" 방식(비밀 URL 신뢰 모델). 실명 인증 아님 — 재미 목적 MVP 수준의 리스크로 판단.
@@ -153,7 +152,7 @@ git add -A && git commit -m "..." && git push
 ## 8. 사람이 직접 해야 하는 것 (코드로 대체 불가)
 
 - ~~앱인토스 개발자센터에서 미니앱 등록 → `appName` 확보~~ ✅ 완료 (`palmlab`)
-- **Supabase 프로젝트 생성 + 연결** (커플 궁합용, 6-1 참고): 계정 생성 → `supabase/schema.sql` 실행 → URL/anon key를 `.env`와 GitHub Actions secrets에 등록
+- ~~Supabase 프로젝트 생성 + 연결~~ ✅ 완료
 - **테스트 배포**: 콘솔(앱인토스 개발자센터 → 워크스페이스 → API 키 발급) → 로컬 터미널에서
   ```bash
   npx ait token add   # API 키 붙여넣기 (대화형 프롬프트, ~/.ait/credentials에 저장됨 — 저장소와 무관)
@@ -176,6 +175,7 @@ git add -A && git commit -m "..." && git push
 - **`npx ait init`은 완전 대화형(clack/prompts 기반)이라 파이프로 자동입력이 안 먹힘** — stdin에 문자만 "타이핑"되고 Enter가 제출로 안 이어짐(raw TTY 필요). `--app-name`으로 appName은 건너뛸 수 있지만 `webBundleDir` 질문에서 멈춤. → 이 세션에서는 CLI 대신 **수동으로 `apps-in-toss.config.ts`/`package.json`/`vite.config.ts`를 직접 작성**하는 우회로 진행함. 같은 문제 만나면 반복 실행하지 말 것(매번 실행될 때마다 package.json/gitignore가 중복 append됨 — 실제로 한 번 겪음, `git checkout`으로 되돌리고 수동 작성으로 정리).
 - **`@apps-in-toss/ait-format`은 Node ≥24 필수.** Node 20으로 `npm install`하면 EBADENGINE 경고만 뜨고 설치는 되지만, `ait` CLI 실행이 이상 동작할 수 있어 Node 24 바이너리를 따로 받아 씀. 다만 **일반 `vite dev`/`vite build`는 Node 20에서도 정상 동작**(CI는 그대로 20 유지, 안 건드림).
 - **`@apps-in-toss/devtools`가 실기기 없이 네이티브 SDK를 mock으로 완벽 대체**해줌 — `npm run dev` 화면 우측 하단 "AIT" 버튼. 카메라 촬영이 파일선택 다이얼로그 없이 즉시 mock 이미지를 반환하고, IAP 결제·이미지 저장도 실제 브릿지 코드 경로로 동작·검증 가능. 프로덕션 빌드에선 0바이트로 자동 제외됨. 앞으로 브릿지 관련 기능 만들 때 이걸로 먼저 검증할 것.
+- **`@apps-in-toss/web-framework`를 실제 dependency로 설치한 뒤로, `import()` 자체는 토스 웹뷰 밖(GitHub Pages 등)에서도 항상 성공함** — 함수는 존재하지만 호출하면 "토스 웹뷰 환경이 아니에요" 런타임 에러를 던짐. 예전엔 패키지 미설치라 `import()`가 항상 실패해서 자동으로 브라우저 폴백이 됐는데, 설치 후엔 그 안전장치가 사라짐. `loadSdk()`에 `production && !isInToss()`면 아예 시도 안 하는 가드를 추가해서 해결(dev는 devtools mock이 모듈 자체를 치환하므로 영향 없음). **실기기 없이 로컬 devtools mock으로만 검증하면 이런 버그를 못 잡는다** — `vite build && vite preview`로 실제 프로덕션 빌드를 반드시 별도로 재현 테스트해야 함(이번에 그렇게 해서 발견).
 - **`bridge/index.ts`의 `Share.share(payload)` 호출은 실제 v3 SDK에 없는 메서드였음** — v3엔 `Share.sendMessage({ message: string })` 하나뿐(텍스트만, 파일 첨부 불가). SDK 미설치 상태로 작성돼서 지금까지 안 걸렸던 버그. 이관하며 devtools mock 타입 정의(`node_modules/@apps-in-toss/web-framework/dist/index.d.ts`)를 직접 읽고 맞춰 고침 — 공식 문서(WebFetch 요약)보다 **설치된 패키지의 `.d.ts`가 가장 정확한 소스**였음.
 
 ---
