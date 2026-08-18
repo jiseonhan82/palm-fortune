@@ -62,18 +62,22 @@ src/
   theme.ts, global.tsx    # 디자인 토큰 · 전역 스타일
   types.ts                # 도메인 타입 (Reading, RarePattern, PremiumSection...)
   lib/
-    bridge/index.ts       # 앱인토스 SDK 어댑터 (카메라/IAP/공유 + 브라우저 폴백)
+    bridge/index.ts       # 앱인토스 SDK 어댑터 (카메라/IAP/공유/저장 + 브라우저 폴백)
+    supabase.ts           # 커플 궁합용 Supabase 클라이언트 + CRUD (env 없으면 null, 기능 자동 숨김)
     reading/
       seed.ts             # 이미지 해시 → 시드 RNG (결정론)
-      content.ts          # ⭐ 콘텐츠 라이브러리 (여기만 늘리면 결과 변주↑)
+      content.ts          # ⭐ 개인 손금 콘텐츠 라이브러리 (여기만 늘리면 결과 변주↑)
       engine.ts           # 시드 → Reading 생성
+      coupleContent.ts    # ⭐ 궁합 콘텐츠 라이브러리
+      coupleEngine.ts     # 두 시드 결합 → CoupleReading 생성
     products.ts           # ⭐ IAP 상품 카탈로그 (sku, 가격 표시)
     storage.ts            # 결제/해제 상태 (localStorage)
     shareImage.ts         # 공유 카드 canvas 렌더링
   ui/primitives.tsx       # 버튼·카드·배경 (심사 시 TDS로 교체)
-  screens/                # 각 화면
+  screens/                # 각 화면 (Couple* 4개가 궁합 플로우)
 apps-in-toss.config.ts    # 앱인토스 배포 설정 (appName·권한·webBundleDir) — @apps-in-toss/web-framework v3
-scripts/smoke.ts          # 엔진 스모크 테스트
+supabase/schema.sql       # 커플 궁합용 DB 스키마 (Supabase SQL Editor에서 실행)
+scripts/smoke.ts          # 엔진 스모크 테스트 (개인 + 궁합)
 .github/workflows/deploy.yml  # Pages 자동 배포 (GitHub Pages 전용, ait와 무관)
 ```
 
@@ -115,9 +119,32 @@ git add -A && git commit -m "..." && git push
 
 카메라/IAP/공유/저장은 `bridge/index.ts`가 실제 토스 앱 WebView 안에서 SDK를 감지해 네이티브로 호출하고, 그 밖(브라우저)에선 자동 폴백함.
 
+## 6-1. 커플 궁합 리포트 — ✅ 코드 구현 완료 (Supabase 연결만 남음)
+
+이 프로젝트에서 처음으로 백엔드(Supabase)가 필요한 기능. 설계 원칙:
+- **초대자만 결제**, 파트너는 링크만 열면 무료
+- **손바닥 사진 원본은 서버로 안 감** — 각자 기기에서 로컬로 계산한 시드(해시 문자열)만 Supabase에 저장
+- **초대자의 개인 결과는 안 바뀜** — 궁합 진입 시 재촬영 없이 방금 본 `reading`을 그대로 재사용. 재촬영은 파트너만 함(그쪽은 "다시 찍기"가 아니라 "처음 찍기"라 문제 없음)
+
+**흐름:**
+1. 결과 화면 → "💌 커플 궁합 보기" → [CoupleInviteScreen](src/screens/CoupleInviteScreen.tsx)에서 결제(`PRODUCTS.coupleReport`) → Supabase에 초대(inviter 시드만) 생성 → 범용 URL 링크(`?invite={id}`) 공유 + 3초 간격 폴링으로 대기
+2. 파트너가 링크 열면 → [CoupleJoinFlow](src/screens/CoupleJoinFlow.tsx) → 자기 손바닥 촬영(로컬에서 개인 `Reading` 생성) → Supabase에 파트너 시드 업데이트
+3. 양쪽 시드가 모이면 [generateCoupleReading](src/lib/reading/coupleEngine.ts)이 **두 시드를 정렬 후 결합**해 새 시드를 만들고, 그걸로 궁합 콘텐츠 조립(개인 엔진과 동일한 $0·결정론적 방식 — 서버 연산 없음, 누가 초대했는지와 무관하게 항상 같은 결과)
+4. 초대자는 폴링이 완료를 감지하면, 파트너는 촬영 직후 곧바로 [CoupleResultScreen](src/screens/CoupleResultScreen.tsx)으로 각자 진입
+
+**남은 건 사람이 해야 함:**
+1. https://supabase.com 프로젝트 생성 → SQL Editor에서 [supabase/schema.sql](supabase/schema.sql) 실행
+2. Project Settings → API에서 URL/anon key 확인 → 로컬은 `.env`(← `.env.example` 복사), GitHub Actions는 **저장소 Settings → Secrets and variables → Actions**에 `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` 등록 (`.github/workflows/deploy.yml`이 이미 이 secrets를 참조하도록 되어 있음)
+3. 값이 없으면 `isCoupleFeatureAvailable()`이 false를 반환해 결과 화면에서 "궁합 보기" 카드가 자동으로 숨겨짐(안전한 기본값) — 즉 지금 당장 GH Pages에 반영해도 문제없음
+
+**알려진 한계 (v1, 의도적으로 단순화):**
+- RLS가 인증 없이 "id를 아는 사람 누구나 읽기/쓰기 가능" 방식(비밀 URL 신뢰 모델). 실명 인증 아님 — 재미 목적 MVP 수준의 리스크로 판단.
+- 초대자가 "대기 중" 화면에서 새로고침/앱을 나가면 `inviteId`를 잃어버림(세션에만 존재, localStorage 미저장). 나중에 개선하면 좋음.
+- 오래된 미완료 초대 자동 정리(TTL) 없음 — 필요해지면 Supabase pg_cron이나 수동 정리로 추가.
+
 ## 7. 다음 로드맵
 
-- **커플 궁합 리포트** — 초대 링크·기기 간 상태 (여기서 처음으로 백엔드 필요: 무료 서버리스 + 무료 DB). 원칙: 초대자만 결제, 파트너 무료.
+- ✅ **커플 궁합 리포트** — 코드 구현 완료, Supabase 프로젝트 연결만 남음 (아래 6-1 참고)
 - **오늘의 손금 운세** — 매일 갱신, 재방문 장치
 - **토스 로그인 / 푸시 알림**
 - **서버 영수증 검증** — 현재 결제 지급은 로컬(localStorage). 실제 서비스는 서버 검증 보강 필요.
@@ -126,6 +153,7 @@ git add -A && git commit -m "..." && git push
 ## 8. 사람이 직접 해야 하는 것 (코드로 대체 불가)
 
 - ~~앱인토스 개발자센터에서 미니앱 등록 → `appName` 확보~~ ✅ 완료 (`palmlab`)
+- **Supabase 프로젝트 생성 + 연결** (커플 궁합용, 6-1 참고): 계정 생성 → `supabase/schema.sql` 실행 → URL/anon key를 `.env`와 GitHub Actions secrets에 등록
 - **테스트 배포**: 콘솔(앱인토스 개발자센터 → 워크스페이스 → API 키 발급) → 로컬 터미널에서
   ```bash
   npx ait token add   # API 키 붙여넣기 (대화형 프롬프트, ~/.ait/credentials에 저장됨 — 저장소와 무관)
