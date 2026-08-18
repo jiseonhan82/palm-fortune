@@ -99,6 +99,10 @@ export function CaptureScreen({
           <li>📵 흔들림 주의</li>
         </ul>
 
+        <p css={css`margin: 0; font-size: 11px; color: ${theme.color.textDim}; text-align: center;`}>
+          ※ 같은 손이어도 촬영 각도·조명·손 위치에 따라 풀이가 달라질 수 있어요
+        </p>
+
         {error && <p css={css`color: ${theme.color.danger}; font-size: 13px; margin: 0;`}>{error}</p>}
       </div>
 

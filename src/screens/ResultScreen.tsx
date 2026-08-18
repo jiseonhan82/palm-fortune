@@ -97,6 +97,8 @@ export function ResultScreen({
           다시 촬영하기
         </Button>
         <p css={css`margin: 6px 0 0; font-size: 11px; color: ${theme.color.textDim}; text-align: center;`}>
+          ※ 다시 촬영하면 각도·조명 차이로 풀이가 달라질 수 있어요
+          <br />
           본 콘텐츠는 오락 목적이며, 의학·재정적 조언이 아니에요.
         </p>
       </div>
