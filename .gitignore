@@ -10,6 +10,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .vite
+*.tsbuildinfo
 
 # Claude Code / oh-my-claudecode local session state (앱 코드 아님)
 .omc/
