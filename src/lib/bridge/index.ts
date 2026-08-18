@@ -6,14 +6,16 @@
 
 import type { CaptureResult } from '../../types';
 
-// 패키지명을 변수로 둬서 Vite 정적 분석이 미설치 패키지를 해석하려다 실패하지 않게 함.
-const SDK_MODULE = '@apps-in-toss/web-framework';
-
-let sdkCache: any | undefined; // undefined=미시도, null=없음(브라우저)
+// @apps-in-toss/web-framework는 실제 dependency로 설치돼 있음(package.json 참고).
+// - 로컬 개발: @apps-in-toss/devtools의 vite 플러그인이 이 모듈을 mock으로 자동 치환(패널로 조작 가능)
+// - 프로덕션(GitHub Pages 등, 토스 앱 밖): devtools가 비활성화되지만 실제 SDK 호출은
+//   네이티브 브릿지가 없어 대부분 실패 → 아래 각 함수의 폴백 경로로 넘어감
+// - 실제 토스 앱 WebView 안: 네이티브 브릿지가 정상 응답
+let sdkCache: any | undefined; // undefined=미시도, null=로드 실패(네이티브 브릿지 없음)
 async function loadSdk(): Promise<any | null> {
   if (sdkCache !== undefined) return sdkCache;
   try {
-    sdkCache = await import(/* @vite-ignore */ SDK_MODULE);
+    sdkCache = await import('@apps-in-toss/web-framework');
   } catch {
     sdkCache = null;
   }
@@ -118,9 +120,11 @@ export async function purchase(
 // ── 공유 ────────────────────────────────────────────────
 export async function shareText(payload: { title?: string; text?: string; url?: string }): Promise<void> {
   const sdk = await loadSdk();
-  if (sdk?.Share?.share) {
+  // 앱인토스 v3 SDK는 Share.sendMessage({ message }) 하나만 제공함 (텍스트만, 파일 공유 불가).
+  if (sdk?.Share?.sendMessage) {
+    const message = [payload.title, payload.text, payload.url].filter(Boolean).join('\n');
     try {
-      await sdk.Share.share(payload);
+      await sdk.Share.sendMessage({ message });
       return;
     } catch {
       /* 폴백으로 진행 */

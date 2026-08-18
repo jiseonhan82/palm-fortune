@@ -53,7 +53,7 @@ src/
     shareImage.ts         # 공유 카드 canvas 렌더링
   ui/primitives.tsx       # 버튼·카드·배경 등 (심사 시 TDS로 교체)
   screens/                # 각 화면
-appsintoss-template/      # 앱인토스 이관용 타겟 파일 (granite.config 등)
+apps-in-toss.config.ts    # 앱인토스 배포 설정 (appName·권한·webBundleDir)
 ```
 
 ## ▶️ 로컬 실행 (브라우저 데모)
@@ -66,22 +66,30 @@ npm run dev      # http://localhost:5173
 브라우저에서는 카메라 대신 **파일 선택(모바일=카메라)**, 결제는 **모의 결제(과금 없음)** 로 동작합니다.
 데스크톱에서도 이미지를 아무거나 선택하면 전체 플로우를 끝까지 확인할 수 있습니다.
 
+`npm run dev` 화면 우측 하단의 **"AIT" 버튼**을 누르면 `@apps-in-toss/devtools` 패널이 뜨는데, 실제 앱인토스 SDK를
+mock으로 치환해 카메라·IAP 결제·이미지 저장·공유가 전부 **네이티브 브릿지 코드 경로 그대로** 동작합니다(실기기 없이도
+회귀 테스트 가능). 이 패널은 프로덕션 빌드(`vite build`)에서는 자동으로 완전히 빠집니다.
+
 ```bash
-npm run build     # 프로덕션 빌드 (dist/)
+npm run build     # 프로덕션 빌드 (dist/) — GitHub Pages용
 npm run typecheck # 타입 체크
+npm run build:ait # dist/ 빌드 + palmlab.ait 아티팩트 생성 (Node 24+ 필요)
+npm run deploy    # ait deploy — 앱인토스 콘솔에 업로드
 ```
 
-## 🚀 앱인토스로 이관하기
+## 🚀 앱인토스 이관 — ✅ 완료
 
-1. `npm i -g @apps-in-toss/ax` 후 `ax mcp` (또는 공식 CLI)로 프로젝트 초기화
-   또는 `npm install @apps-in-toss/web-framework` → `npx ait init`
-2. 생성된 `granite.config.ts` 에 콘솔에서 발급한 `appName`/아이콘/권한(camera) 반영
-   (참고 템플릿: `appsintoss-template/granite.config.ts`)
-3. 파일 기반 라우팅 진입점 연결: `appsintoss-template/pages/index.tsx` 처럼 홈 라우트에서 `<App/>` 렌더
-4. TDS 적용: `@toss/tds-mobile` 설치 후 `ui/primitives.tsx` 를 TDS 컴포넌트로 교체 (**비게임 WebView 심사 필수**)
-5. IAP 상품 등록: 개발자센터 콘솔에서 소모성 상품 생성 → `src/lib/products.ts` 의 `sku` 와 일치시키기
+`@apps-in-toss/web-framework` v3(SDK 3.0.4) 기준으로 이미 이관됐습니다. v3는 새 프로젝트를 스캐폴딩하는 방식이 아니라
+**기존 Vite 엔트리(`src/main.tsx`)에 설정 파일 하나만 추가**하는 방식이라, 별도 `pages/`/`_app.tsx` 라우팅이 필요 없습니다.
 
-카메라/IAP/공유는 이미 `src/lib/bridge/index.ts` 가 실제 SDK를 자동 감지해 호출하므로, 토스 앱 안에서 바로 네이티브 브릿지로 동작합니다.
+1. ✅ `npm install @apps-in-toss/web-framework @apps-in-toss/devtools`
+2. ✅ `apps-in-toss.config.ts` 에 콘솔 발급 `appName`(`palmlab`)·권한(camera) 반영
+3. ✅ `vite.config.ts` 에 `aitDevtools.vite()` 연결 (프로덕션 빌드에선 자동 비활성화)
+4. ⬜ TDS 적용: `@toss/tds-mobile` 설치 후 `ui/primitives.tsx` 를 TDS 컴포넌트로 교체 (**정식 심사엔 필수, 테스트 배포엔 불필요**)
+5. ⬜ IAP 상품 등록: 개발자센터 콘솔에서 소모성 상품 생성 → `src/lib/products.ts` 의 `sku` 와 일치시키기
+6. ⬜ **실기기 테스트 배포** (사람이 직접): 콘솔에서 API 키 발급 → `npx ait token add` → `npm run deploy`
+
+카메라/IAP/공유/저장은 `src/lib/bridge/index.ts` 가 실제 SDK를 감지해 호출하므로, 토스 앱 안에서 바로 네이티브 브릿지로 동작합니다.
 
 ## ⚠️ 컴플라이언스
 

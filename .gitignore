@@ -14,3 +14,7 @@ yarn-error.log*
 # Claude Code / oh-my-claudecode local session state (앱 코드 아님)
 .omc/
 .claude/
+
+# 앱인토스 빌드 산출물 (ait build) — 로컬/CI에서 매번 생성, 커밋 대상 아님
+# (배포 토큰은 프로젝트 밖 ~/.ait/credentials 에 저장되므로 이 저장소와 무관)
+*.ait

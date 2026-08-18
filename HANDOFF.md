@@ -13,10 +13,12 @@
 | **배포** | `main`에 push → GitHub Actions가 자동 빌드·Pages 배포 |
 | **핵심 원칙** | 💸 **유료 AI 안 씀.** 이미지 시드 기반 로컬 $0 콘텐츠 엔진 |
 | **기획서** | 저장소에 없음 → `~/Downloads/손금-미니앱-기획서.md` (필요 시 따로 지참) |
+| **앱인토스 appName** | `palmlab` (콘솔 등록 완료, 변경 불가) |
 
 ## 1. 새 컴퓨터 셋업
 
-**전제:** Node 20+ (CI는 20 사용), git, (배포하려면) GitHub 로그인.
+**전제:** Node 20+ (일반 개발/GH Pages CI는 20으로 충분), git, (배포하려면) GitHub 로그인.
+**앱인토스 CLI(`ait`)/devtools를 쓰려면 Node 24+ 필요** (`@apps-in-toss/ait-format`, `unplugin` 등이 요구). 없으면 `npm run dev`/`npm run build`는 되지만 `npm run build:ait`/`npm run deploy`가 실패하거나 mock 패널이 안 뜰 수 있음.
 
 ```bash
 git clone https://github.com/jiseonhan82/palm-fortune.git
@@ -30,9 +32,12 @@ npm run dev          # http://localhost:5173  (브라우저 데모)
 **검증 명령:**
 ```bash
 npm run typecheck    # 타입 체크
-npm run build        # 프로덕션 빌드 (dist/)
+npm run build        # 프로덕션 빌드 (dist/) — GitHub Pages용, ait 관여 없음
 npm run smoke        # $0 손금 엔진 자체 테스트 (결정론·다양성·구조·분포)
+npm run build:ait    # dist/ 빌드 + apps-in-toss.config.ts 읽어 palmlab.ait 아티팩트 생성 (Node 24+)
 ```
+
+**`npm run dev` 실행 시 화면 우측 하단에 "AIT" 플로팅 버튼이 뜹니다.** `@apps-in-toss/devtools`가 실제 앱인토스 SDK를 mock으로 치환한 것 — 카메라·IAP 결제·이미지 저장·공유가 전부 **진짜 네이티브 브릿지 코드 경로**로 동작하고(파일선택 다이얼로그 없이 즉시 mock 이미지 반환, 실제 결제창 없이 IAP 성공 이벤트 발생 등), 그 버튼을 눌러 플랫폼(iOS/Android)·권한 거부·네트워크 등 상태도 바꿔볼 수 있습니다. **실기기 없이도 네이티브 경로 회귀 테스트가 가능**하다는 뜻 — 이 패널은 `vite build`(프로덕션)에서는 자동으로 완전히 빠집니다(번들에 0바이트 기여).
 
 ## 2. 지금까지 완료 (핵심 수익 플로우)
 
@@ -67,9 +72,9 @@ src/
     shareImage.ts         # 공유 카드 canvas 렌더링
   ui/primitives.tsx       # 버튼·카드·배경 (심사 시 TDS로 교체)
   screens/                # 각 화면
-appsintoss-template/      # 앱인토스 이관용 타겟 파일 (granite.config 등)
+apps-in-toss.config.ts    # 앱인토스 배포 설정 (appName·권한·webBundleDir) — @apps-in-toss/web-framework v3
 scripts/smoke.ts          # 엔진 스모크 테스트
-.github/workflows/deploy.yml  # Pages 자동 배포
+.github/workflows/deploy.yml  # Pages 자동 배포 (GitHub Pages 전용, ait와 무관)
 ```
 
 ## 4. 자주 만지는 곳
@@ -92,17 +97,23 @@ git add -A && git commit -m "..." && git push
 - `vite.config.ts`의 `base: './'` — Pages 하위경로(`/palm-fortune/`)에서 에셋 로드에 필수.
 - 저장소 **public 유지** — 무료 플랜은 **비공개 저장소 Pages 미지원(422)**.
 
-## 6. 앱인토스 이관 (심사·출시 전)
+## 6. 앱인토스 이관 — ✅ 코드 이관 완료 (테스트 배포만 남음)
 
-`appsintoss-template/`에 타겟 파일(`granite.config.ts`, `pages/index.tsx`, `_app.tsx`, `require.context.ts`)이 있음. README의 "앱인토스로 이관하기" 참고.
+`@apps-in-toss/web-framework` v3(SDK 3.0.4)로 실제 이관 끝. **주의: 예전에 있던 `appsintoss-template/`(granite.config.ts + pages/_app.tsx 파일기반 라우팅 방식)는 v2 시절 문서라 v3와 안 맞아서 삭제함.** v3는 새 프로젝트 스캐폴딩이 아니라, **기존 Vite 엔트리(`src/main.tsx`) 그대로에 설정 파일 하나만 추가**하는 방식.
 
-1. `npm i -g @apps-in-toss/ax && ax mcp` 또는 `npm i @apps-in-toss/web-framework && npx ait init`
-2. `granite.config.ts`에 콘솔 발급 `appName`/아이콘/권한(camera) 반영
-3. 홈 라우트에서 `<App/>` 렌더 (`appsintoss-template/pages/index.tsx` 참고)
-4. **TDS 이관**: `@toss/tds-mobile` 설치 후 `ui/primitives.tsx`를 TDS로 교체 (**비게임 WebView 심사 필수**)
-5. IAP 상품 콘솔 등록 → `products.ts`의 `sku`와 일치
+**완료된 것:**
+1. `@apps-in-toss/web-framework`(dependency) + `@apps-in-toss/devtools`(devDependency) 설치
+2. `apps-in-toss.config.ts` 생성 — `appName: 'palmlab'`, `permissions: [{ name: 'camera', access: 'access' }]`, `webBundleDir: 'dist'`
+3. `vite.config.ts`에 `aitDevtools.vite()` 플러그인 연결 (프로덕션 빌드에선 자동 비활성화)
+4. `bridge/index.ts`를 실제 v3 SDK 시그니처에 맞게 수정 — **`Share.share`는 v3에 없는 API였음(구버전 가정 오류), 실제로는 `Share.sendMessage({ message })`**. `Device.openCamera`/`IAP.createOneTimePurchaseOrder`/`File.saveBase64`는 원래 코드가 맞았음(devtools mock으로 실제 호출까지 검증 완료).
+5. `package.json`에 `build:ait`(`ait build`로 `.ait` 아티팩트 생성), `deploy`(`ait deploy`) 스크립트 추가. 기존 `build`(GH Pages용)는 그대로 둬서 CI 영향 없음.
+6. 로컬에서 `npm run build:ait`로 `palmlab.ait` 생성까지 실제로 검증함.
 
-카메라/IAP/공유는 `bridge/index.ts`가 토스 앱 안에서 실제 SDK를 자동 감지해 호출함(밖에선 폴백).
+**남은 건 사람이 해야 함 (8번 참고):** 콘솔에서 API 토큰 발급 → `ait token add` → `npm run deploy`로 실제 업로드해야 실기기(샌드박스 앱)에서 열어볼 수 있음.
+
+**TDS 이관은 아직 안 함** — `ui/primitives.tsx`가 여전히 커스텀 컴포넌트. 정식 심사 전엔 `@toss/tds-mobile`로 교체 필요(테스트 배포 자체엔 필수 아님).
+
+카메라/IAP/공유/저장은 `bridge/index.ts`가 실제 토스 앱 WebView 안에서 SDK를 감지해 네이티브로 호출하고, 그 밖(브라우저)에선 자동 폴백함.
 
 ## 7. 다음 로드맵
 
@@ -114,9 +125,17 @@ git add -A && git commit -m "..." && git push
 
 ## 8. 사람이 직접 해야 하는 것 (코드로 대체 불가)
 
-- 앱인토스 개발자센터에서 미니앱 등록 → `appName` 확보
+- ~~앱인토스 개발자센터에서 미니앱 등록 → `appName` 확보~~ ✅ 완료 (`palmlab`)
+- **테스트 배포**: 콘솔(앱인토스 개발자센터 → 워크스페이스 → API 키 발급) → 로컬 터미널에서
+  ```bash
+  npx ait token add   # API 키 붙여넣기 (대화형 프롬프트, ~/.ait/credentials에 저장됨 — 저장소와 무관)
+  npm run deploy       # palmlab.ait 업로드
+  ```
+  업로드 후 샌드박스 앱에서 `intoss://palmlab` 딥링크로 열어 실기기 확인.
+  ⚠️ API 키는 비밀값이라 Claude에게 붙여넣지 말고 본인 터미널에서 직접 실행 권장.
 - IAP 소모성 상품 3종 등록 → `products.ts`의 `sku`와 일치
 - 개인정보 처리방침 작성 (손바닥 이미지 처리, 커플 시 파트너 정보)
+- (정식 심사 신청 전) TDS 이관, 스토어 노출 정보(설명/스크린샷/카테고리) 콘솔에 채우기
 
 ## 9. 함정 / 교훈 (이 세션에서 확인)
 
@@ -125,6 +144,11 @@ git add -A && git commit -m "..." && git push
 - `vite.config.ts` `base:'./'`, `allowedHosts:true` 유지 (하위경로 에셋 / 터널·preview 접근).
 - **Vercel** 팀 `ouiwefilm-8866`은 프로젝트 생성 권한 막힘(403) → 영구배포에 부적합.
 - **cloudflared quick tunnel**은 세션에 매여 자주 죽음 → 임시 테스트용으로만. 영구 링크는 Pages.
+- **`granite.config.ts` + `pages/`/`_app.tsx` 파일기반 라우팅은 `@apps-in-toss/web-framework` 2.x 방식.** 3.x(현재 최신, 2026-08 기준 3.0.4)는 `apps-in-toss.config.ts` + 기존 Vite 엔트리 그대로 쓰는 훨씬 단순한 방식으로 바뀜. `npx ait migrate v3`로 2.x→3.x 자동 전환 가능하지만, 이 프로젝트는 애초에 신규였어서 `npx ait init`으로 바로 시작함.
+- **`npx ait init`은 완전 대화형(clack/prompts 기반)이라 파이프로 자동입력이 안 먹힘** — stdin에 문자만 "타이핑"되고 Enter가 제출로 안 이어짐(raw TTY 필요). `--app-name`으로 appName은 건너뛸 수 있지만 `webBundleDir` 질문에서 멈춤. → 이 세션에서는 CLI 대신 **수동으로 `apps-in-toss.config.ts`/`package.json`/`vite.config.ts`를 직접 작성**하는 우회로 진행함. 같은 문제 만나면 반복 실행하지 말 것(매번 실행될 때마다 package.json/gitignore가 중복 append됨 — 실제로 한 번 겪음, `git checkout`으로 되돌리고 수동 작성으로 정리).
+- **`@apps-in-toss/ait-format`은 Node ≥24 필수.** Node 20으로 `npm install`하면 EBADENGINE 경고만 뜨고 설치는 되지만, `ait` CLI 실행이 이상 동작할 수 있어 Node 24 바이너리를 따로 받아 씀. 다만 **일반 `vite dev`/`vite build`는 Node 20에서도 정상 동작**(CI는 그대로 20 유지, 안 건드림).
+- **`@apps-in-toss/devtools`가 실기기 없이 네이티브 SDK를 mock으로 완벽 대체**해줌 — `npm run dev` 화면 우측 하단 "AIT" 버튼. 카메라 촬영이 파일선택 다이얼로그 없이 즉시 mock 이미지를 반환하고, IAP 결제·이미지 저장도 실제 브릿지 코드 경로로 동작·검증 가능. 프로덕션 빌드에선 0바이트로 자동 제외됨. 앞으로 브릿지 관련 기능 만들 때 이걸로 먼저 검증할 것.
+- **`bridge/index.ts`의 `Share.share(payload)` 호출은 실제 v3 SDK에 없는 메서드였음** — v3엔 `Share.sendMessage({ message: string })` 하나뿐(텍스트만, 파일 첨부 불가). SDK 미설치 상태로 작성돼서 지금까지 안 걸렸던 버그. 이관하며 devtools mock 타입 정의(`node_modules/@apps-in-toss/web-framework/dist/index.d.ts`)를 직접 읽고 맞춰 고침 — 공식 문서(WebFetch 요약)보다 **설치된 패키지의 `.d.ts`가 가장 정확한 소스**였음.
 
 ---
 _이 문서를 새 세션 Claude에게 먼저 읽히면 맥락을 빠르게 잡습니다._
