@@ -136,6 +136,83 @@ export async function shareText(payload: { title?: string; text?: string; url?: 
   }
 }
 
+// ── 이미지 저장 ─────────────────────────────────────────
+// 우선순위: ①앱인토스 네이티브 저장 → ②Web Share(파일) — 모바일에서 가장 안정적,
+// iOS Safari 등 WebKit 계열은 <a download>가 안 먹히는 경우가 많아 공유 시트의
+// "이미지 저장"을 대신 씀 → ③<a download> — 데스크톱 브라우저 → ④새 탭으로 열기(최후 폴백,
+// 사용자가 길게 눌러 직접 저장)
+export type SaveImageResult = 'native' | 'share' | 'download' | 'opened' | 'cancelled' | 'failed';
+
+export async function saveImage(blob: Blob, fileName: string): Promise<SaveImageResult> {
+  // ① 앱인토스 네이티브 파일 저장
+  const sdk = await loadSdk();
+  if (sdk?.File?.saveBase64) {
+    const supported = sdk.File.saveBase64.isSupported?.() ?? true;
+    if (supported) {
+      try {
+        const data = await blobToBase64(blob);
+        await sdk.File.saveBase64({ data, fileName, mimeType: blob.type || 'image/png' });
+        return 'native';
+      } catch {
+        /* 폴백으로 진행 */
+      }
+    }
+  }
+
+  // ② Web Share(파일) — 모바일 브라우저(특히 iOS)에서 가장 확실하게 "저장"까지 이어짐
+  if (typeof navigator !== 'undefined' && 'canShare' in navigator) {
+    try {
+      const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+      const anyNav = navigator as any;
+      if (anyNav.canShare?.({ files: [file] })) {
+        await anyNav.share({ files: [file] });
+        return 'share';
+      }
+    } catch (e: any) {
+      // 사용자가 공유 시트에서 직접 취소한 경우엔 다음 방법으로 폴백하지 않음
+      if (e?.name === 'AbortError') return 'cancelled';
+      /* 그 외(미지원 등)엔 다음 방법으로 폴백 */
+    }
+  }
+
+  // ③ <a download> — 데스크톱 브라우저에서 잘 동작
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return 'download';
+  } catch {
+    /* 폴백으로 진행 */
+  }
+
+  // ④ 새 탭에서 열기 — 사용자가 직접 길게 눌러 저장
+  try {
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    return 'opened';
+  } catch {
+    return 'failed';
+  }
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result);
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 export class BridgeError extends Error {
   constructor(
     public code: string,

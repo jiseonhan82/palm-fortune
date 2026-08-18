@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useEffect, useState } from 'react';
-import { shareText } from '../lib/bridge';
+import { saveImage, shareText } from '../lib/bridge';
 import { renderShareImage } from '../lib/shareImage';
 import { theme } from '../theme';
 import type { Reading } from '../types';
@@ -10,6 +10,8 @@ import { Button } from '../ui/primitives';
 export function ShareSheet({ reading, onClose }: { reading: Reading; onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [blob, setBlob] = useState<Blob | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let url: string | null = null;
@@ -45,12 +47,28 @@ export function ShareSheet({ reading, onClose }: { reading: Reading; onClose: ()
     });
   }
 
-  function handleSave() {
-    if (!previewUrl) return;
-    const a = document.createElement('a');
-    a.href = previewUrl;
-    a.download = `palm-reading-${reading.id}.png`;
-    a.click();
+  async function handleSave() {
+    if (!blob) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const result = await saveImage(blob, `palm-reading-${reading.id}.png`);
+      if (result === 'native' || result === 'download') {
+        setSaveMsg('이미지가 저장됐어요 ✅');
+      } else if (result === 'share') {
+        setSaveMsg('공유 시트에서 "사진에 저장"을 선택해주세요');
+      } else if (result === 'opened') {
+        setSaveMsg('새 탭에서 이미지를 길게 눌러 저장해주세요');
+      } else if (result === 'cancelled') {
+        setSaveMsg(null);
+      } else {
+        setSaveMsg('저장에 실패했어요. 화면을 캡처해서 저장해주세요.');
+      }
+    } catch {
+      setSaveMsg('저장에 실패했어요. 화면을 캡처해서 저장해주세요.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -101,9 +119,14 @@ export function ShareSheet({ reading, onClose }: { reading: Reading; onClose: ()
         <Button variant="gold" onClick={handleShare} disabled={!blob}>
           공유하기
         </Button>
-        <Button variant="ghost" onClick={handleSave} disabled={!previewUrl}>
-          이미지 저장
+        <Button variant="ghost" onClick={handleSave} disabled={!blob || saving}>
+          {saving ? '저장하는 중…' : '이미지 저장'}
         </Button>
+        {saveMsg && (
+          <p css={css`margin: -4px 0 0; font-size: 13px; text-align: center; color: ${theme.color.gold};`}>
+            {saveMsg}
+          </p>
+        )}
         <button onClick={onClose} css={css`color: ${theme.color.textDim}; font-size: 14px; padding: 6px;`}>
           닫기
         </button>
