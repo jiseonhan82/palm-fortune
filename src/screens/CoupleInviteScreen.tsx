@@ -1,7 +1,7 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
 import { useEffect, useRef, useState } from 'react';
-import { purchase, shareText } from '../lib/bridge';
+import { createInviteLink, purchase, shareText } from '../lib/bridge';
 import { PRODUCTS } from '../lib/products';
 import { createCoupleInvite, fetchCoupleInvite } from '../lib/supabase';
 import { theme } from '../theme';
@@ -29,9 +29,13 @@ export function CoupleInviteScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invite, setInvite] = useState<CoupleInvite | null>(null);
+  const [shareUrl, setShareUrl] = useState('');
   const pollRef = useRef<number | null>(null);
 
-  const shareUrl = invite ? `${location.origin}${location.pathname}?invite=${invite.id}` : '';
+  useEffect(() => {
+    if (!invite) return;
+    createInviteLink(`invite=${invite.id}`).then(setShareUrl);
+  }, [invite]);
 
   useEffect(() => {
     return () => {
@@ -109,12 +113,15 @@ export function CoupleInviteScreen({
                 text-align: left;
               `}
             >
-              {shareUrl}
+              {shareUrl || '링크 만드는 중…'}
             </p>
           </Card>
+          <p css={css`margin: -8px 0 0; font-size: 11px; color: ${theme.color.textDim};`}>
+            ※ 상대방 기기에 토스 앱이 설치돼 있어야 링크가 열려요
+          </p>
 
           <div css={css`width: 100%; display: flex; flex-direction: column; gap: 10px;`}>
-            <Button variant="gold" onClick={handleShare}>
+            <Button variant="gold" onClick={handleShare} disabled={!shareUrl}>
               💌 초대 링크 보내기
             </Button>
             <Button variant="ghost" onClick={onClose}>

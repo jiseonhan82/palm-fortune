@@ -28,6 +28,9 @@ export function isInToss(): boolean {
   return /toss/i.test(navigator.userAgent);
 }
 
+/** apps-in-toss.config.ts의 appName과 반드시 일치해야 함 (딥링크 intoss://{appName} 식별자) */
+export const APP_SCHEME = 'palmlab';
+
 // ── 카메라 ─────────────────────────────────────────────
 export async function openCamera(): Promise<CaptureResult | null> {
   const sdk = await loadSdk();
@@ -138,6 +141,24 @@ export async function shareText(payload: { title?: string; text?: string; url?: 
       /* 사용자 취소 등 */
     }
   }
+}
+
+// ── 초대 링크 (커플 궁합) ─────────────────────────────────
+// GitHub Pages URL(jiseonhan82.github.io/...) 대신 토스 딥링크(intoss://palmlab?...)를 써서
+// 개인 계정 아이디가 링크에 노출되지 않게 함. 단, 토스 앱이 설치돼 있어야 열림.
+export async function createInviteLink(query: string): Promise<string> {
+  const deepLink = `intoss://${APP_SCHEME}?${query}`;
+  const sdk = await loadSdk();
+  // 실제 토스 앱 안에서는 Share.createLink가 토스 자체 도메인의 짧은 유니버설 링크로
+  // 변환해줌(카톡 등 어디서든 열리고, 미설치 시 앱스토어로 유도됨). 실패하면 원본 딥링크 그대로 사용.
+  if (sdk?.Share?.createLink) {
+    try {
+      return await sdk.Share.createLink({ path: deepLink });
+    } catch {
+      /* 폴백으로 진행 */
+    }
+  }
+  return deepLink;
 }
 
 // ── 이미지 저장 ─────────────────────────────────────────
