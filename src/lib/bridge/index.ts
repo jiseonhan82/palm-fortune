@@ -11,9 +11,20 @@ import type { CaptureResult } from '../../types';
 // - 프로덕션(GitHub Pages 등, 토스 앱 밖): devtools가 비활성화되지만 실제 SDK 호출은
 //   네이티브 브릿지가 없어 대부분 실패 → 아래 각 함수의 폴백 경로로 넘어감
 // - 실제 토스 앱 WebView 안: 네이티브 브릿지가 정상 응답
-let sdkCache: any | undefined; // undefined=미시도, null=로드 실패(네이티브 브릿지 없음)
+let sdkCache: any | undefined; // undefined=미시도, null=로드 실패/네이티브 브릿지 없음
 async function loadSdk(): Promise<any | null> {
   if (sdkCache !== undefined) return sdkCache;
+  // ⚠️ @apps-in-toss/web-framework는 실제 설치된 dependency라서, 토스 웹뷰 밖에서도
+  // import() 자체는 항상 성공함(그냥 우리 번들 안의 JS 모듈을 불러오는 것뿐이라).
+  // 각 함수는 존재하지만, 실제 네이티브 브릿지가 없는 곳에서 호출하면 "토스 웹뷰가
+  // 아니에요" 식의 런타임 에러를 던짐. 그래서 import 성공 여부가 아니라 isInToss()로
+  // 먼저 걸러야 브라우저(GitHub Pages 등)에서 폴백이 정상 동작함.
+  // (dev 모드에선 devtools가 이 모듈 자체를 mock으로 치환해줘서 isInToss() 여부와 무관하게
+  // 항상 시도해야 mock이 동작함 — 그래서 이 가드는 production 빌드에서만 적용)
+  if (import.meta.env.PROD && !isInToss()) {
+    sdkCache = null;
+    return sdkCache;
+  }
   try {
     sdkCache = await import('@apps-in-toss/web-framework');
   } catch {
@@ -42,7 +53,7 @@ export async function openCamera(): Promise<CaptureResult | null> {
       if (sdk.OpenCameraPermissionError && e instanceof sdk.OpenCameraPermissionError) {
         throw new BridgeError('CAMERA_PERMISSION', '카메라 권한이 필요해요.');
       }
-      throw e;
+      // 권한 거부가 아닌 다른 에러(웹뷰 환경 아님 등)는 브라우저 폴백으로 진행
     }
   }
   // 브라우저 폴백: 파일 선택(모바일에선 카메라 실행)
@@ -91,7 +102,8 @@ export async function purchase(
   onGrant: (orderId: string) => Promise<boolean> | boolean,
 ): Promise<PurchaseResult> {
   const sdk = await loadSdk();
-  if (sdk?.IAP?.createOneTimePurchaseOrder) {
+  const supported = sdk?.IAP?.createOneTimePurchaseOrder?.isSupported?.() ?? false;
+  if (sdk?.IAP?.createOneTimePurchaseOrder && supported) {
     return new Promise<PurchaseResult>((resolve) => {
       try {
         sdk.IAP.createOneTimePurchaseOrder({
