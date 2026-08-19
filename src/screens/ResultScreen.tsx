@@ -106,9 +106,9 @@ export function ResultScreen({
             line-height: 1.5;
           `}
         >
-          ⚠️ 지금 이 화면을 꼭 저장해두세요. 다른 손을 촬영하면 이 결과는 사라지고,
+          ⚠️ 지금 이 화면을 꼭 저장해두세요.
           <br />
-          다시 보려면 재결제가 필요해요.
+          다른 손을 촬영하면 이 결과는 사라지고, 다시 보려면 재결제가 필요해요.
         </p>
         <p css={css`margin: 6px 0 0; font-size: 11px; color: ${theme.color.textDim}; text-align: center;`}>
           본 콘텐츠는 오락 목적이며, 의학·재정적 조언이 아니에요.

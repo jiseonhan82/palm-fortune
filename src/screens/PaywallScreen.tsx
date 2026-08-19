@@ -87,9 +87,6 @@ export function PaywallScreen({
         <span css={css`font-size: 32px; font-weight: 800; color: ${theme.color.goldSoft};`}>
           {product.priceLabel}
         </span>
-        <p css={css`margin: 6px 0 0; font-size: 12px; color: ${theme.color.textDim};`}>
-          1회 결제 · 이 손금 결과에 대해 계속 열람 가능
-        </p>
       </div>
 
       {error && (
