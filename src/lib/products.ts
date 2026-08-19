@@ -19,7 +19,7 @@ export interface Product {
 export const PRODUCTS: Record<ProductKey, Product> = {
   reportFull: {
     key: 'reportFull',
-    sku: 'palm_report_full_v1',
+    sku: 'ait.0000065818.954ede46.13812d1ef5.7142968874', // 콘솔 등록값(손금 상세 리포트 1회권)과 일치
     name: '상세 손금 리포트',
     priceLabel: '₩3,300',
     blurb: '재물·애정·건강·운명선 + 인생 전환점 나이 풀버전',
