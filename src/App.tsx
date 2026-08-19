@@ -2,49 +2,24 @@
 import { useCallback, useMemo, useState } from 'react';
 import { generateReading } from './lib/reading/engine';
 import { PRODUCTS } from './lib/products';
-import { hasEntitlement } from './lib/storage';
-import type { CaptureResult, CoupleInvite, CoupleReading, Reading } from './types';
+import { clearLastReading, getLastReading, hasEntitlement, saveLastReading } from './lib/storage';
+import type { CaptureResult, Reading } from './types';
 import { CaptureScreen } from './screens/CaptureScreen';
-import { CoupleInviteScreen } from './screens/CoupleInviteScreen';
-import { CoupleJoinFlow } from './screens/CoupleJoinFlow';
-import { CoupleResultScreen } from './screens/CoupleResultScreen';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { PaywallScreen } from './screens/PaywallScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { ShareSheet } from './screens/ShareSheet';
 
-type Step = 'onboarding' | 'capture' | 'loading' | 'result' | 'paywall' | 'coupleInvite' | 'coupleResult';
+type Step = 'onboarding' | 'capture' | 'loading' | 'result' | 'paywall';
 
 export function App() {
-  // 초대 링크(?invite=xxx)로 들어온 경우, 기존 플로우 전체를 건너뛰고 파트너 전용 플로우로 진입.
-  const inviteIdFromUrl = useMemo(() => new URLSearchParams(window.location.search).get('invite'), []);
-
-  if (inviteIdFromUrl) {
-    return (
-      <CoupleJoinFlow
-        inviteId={inviteIdFromUrl}
-        onExit={() => {
-          // 쿼리 파라미터를 지우고 일반 플로우로 이동
-          const url = new URL(window.location.href);
-          url.searchParams.delete('invite');
-          window.location.href = url.toString();
-        }}
-      />
-    );
-  }
-
-  return <MainFlow />;
-}
-
-function MainFlow() {
-  const [step, setStep] = useState<Step>('onboarding');
+  // 앱을 나갔다 들어와도 마지막 결과로 자동 복귀 — 결제 후 실수로 나가서 결과를 잃어버리는 문제 방지.
+  const [reading, setReading] = useState<Reading | null>(() => getLastReading());
+  const [step, setStep] = useState<Step>(() => (getLastReading() ? 'result' : 'onboarding'));
   const [capture, setCapture] = useState<CaptureResult | null>(null);
-  const [reading, setReading] = useState<Reading | null>(null);
   const [unlockTick, setUnlockTick] = useState(0); // 결제 후 재평가 트리거
   const [showShare, setShowShare] = useState(false);
-  const [coupleReading, setCoupleReading] = useState<CoupleReading | null>(null);
-  const [coupleInvite, setCoupleInvite] = useState<CoupleInvite | null>(null);
 
   const unlocked = useMemo(
     () => (reading ? hasEntitlement(reading.id, PRODUCTS.reportFull.sku) : false),
@@ -53,15 +28,16 @@ function MainFlow() {
 
   const handleCaptured = useCallback((result: CaptureResult) => {
     setCapture(result);
-    setReading(generateReading(result.dataUri));
+    const fresh = generateReading(result.dataUri);
+    setReading(fresh);
+    saveLastReading(fresh);
     setStep('loading');
   }, []);
 
   const restart = useCallback(() => {
     setCapture(null);
     setReading(null);
-    setCoupleReading(null);
-    setCoupleInvite(null);
+    clearLastReading();
     setStep('capture');
   }, []);
 
@@ -82,7 +58,6 @@ function MainFlow() {
           reading={reading}
           unlocked={unlocked}
           onOpenPaywall={() => setStep('paywall')}
-          onOpenCouple={() => setStep('coupleInvite')}
           onShare={() => setShowShare(true)}
           onRestart={restart}
         />
@@ -97,22 +72,6 @@ function MainFlow() {
           }}
           onClose={() => setStep('result')}
         />
-      )}
-
-      {step === 'coupleInvite' && reading && (
-        <CoupleInviteScreen
-          reading={reading}
-          onReady={(cr, invite) => {
-            setCoupleReading(cr);
-            setCoupleInvite(invite);
-            setStep('coupleResult');
-          }}
-          onClose={() => setStep('result')}
-        />
-      )}
-
-      {step === 'coupleResult' && coupleReading && coupleInvite && (
-        <CoupleResultScreen coupleReading={coupleReading} invite={coupleInvite} onRestart={restart} />
       )}
 
       {showShare && reading && <ShareSheet reading={reading} onClose={() => setShowShare(false)} />}

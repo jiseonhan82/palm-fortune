@@ -1,6 +1,5 @@
 /** @jsxImportSource @emotion/react */
 import { css } from '@emotion/react';
-import { isCoupleFeatureAvailable } from '../lib/supabase';
 import { theme } from '../theme';
 import type { Reading } from '../types';
 import { Badge, Button, Card, LockedContent, Screen, SectionTitle } from '../ui/primitives';
@@ -10,14 +9,12 @@ export function ResultScreen({
   reading,
   unlocked,
   onOpenPaywall,
-  onOpenCouple,
   onShare,
   onRestart,
 }: {
   reading: Reading;
   unlocked: boolean;
   onOpenPaywall: () => void;
-  onOpenCouple: () => void;
   onShare: () => void;
   onRestart: () => void;
 }) {
@@ -90,28 +87,6 @@ export function ResultScreen({
           <PremiumTeaser reading={reading} onOpenPaywall={onOpenPaywall} />
         )}
       </div>
-
-      {/* 커플 궁합 진입점 */}
-      {isCoupleFeatureAvailable() && (
-        <div css={css`margin-top: 22px;`}>
-          <Card>
-            <div css={css`display: flex; align-items: center; gap: 12px;`}>
-              <span css={css`font-size: 28px;`}>💞</span>
-              <div css={css`flex: 1;`}>
-                <div css={css`font-size: 15px; font-weight: 800;`}>우리 둘의 궁합은?</div>
-                <div css={css`font-size: 12px; color: ${theme.color.textDim}; margin-top: 2px;`}>
-                  상대방을 초대해서 궁합 리포트 받기
-                </div>
-              </div>
-            </div>
-            <div css={css`margin-top: 14px;`}>
-              <Button variant="ghost" onClick={onOpenCouple}>
-                💌 커플 궁합 보기
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* 하단 액션 */}
       <div css={css`margin-top: 26px; display: flex; flex-direction: column; gap: 10px;`}>

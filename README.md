@@ -31,9 +31,9 @@
 | 프리미엄 락 + IAP | `screens/PaywallScreen.tsx` | ✅ |
 | 상세 리포트(해제 후) | `screens/PremiumReport.tsx` | ✅ |
 | 공유 카드(canvas 이미지) | `screens/ShareSheet.tsx` | ✅ |
-| 커플 궁합 리포트(초대 링크) | `screens/Couple*.tsx` | ✅ (Supabase 프로젝트 연결만 남음 — [HANDOFF.md](HANDOFF.md) 6-1) |
 
 **다음 세션 예정:** 오늘의 손금 운세(재방문), 토스 로그인/푸시, 서버 영수증 검증, TDS 컴포넌트 이관.
+(커플 궁합 리포트는 한 번 만들었다가 우선순위상 롤백함 — [HANDOFF.md](HANDOFF.md) 참고)
 
 ## 🧩 구조
 

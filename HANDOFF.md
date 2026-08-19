@@ -53,6 +53,8 @@ npm run build:ait    # dist/ 빌드 + apps-in-toss.config.ts 읽어 palmlab.ait 
 | 상세 리포트(해제 후) | `src/screens/PremiumReport.tsx` |
 | 공유 카드(canvas 이미지) | `src/screens/ShareSheet.tsx` |
 
+**재방문 자동 복원:** 결제 후 결과를 보다가 실수로 앱을 나갔다 들어와도 처음부터 다시 하지 않도록, 마지막 `Reading`을 `storage.ts`(`saveLastReading`/`getLastReading`)에 저장해뒀다가 다음 방문 시 곧바로 결과 화면으로 복귀시킵니다(결제 상태도 그대로 유지). "다시 촬영하기"를 누르면 그제서야 초기화됩니다.
+
 ## 3. 아키텍처 파일 지도
 
 ```
@@ -63,21 +65,17 @@ src/
   types.ts                # 도메인 타입 (Reading, RarePattern, PremiumSection...)
   lib/
     bridge/index.ts       # 앱인토스 SDK 어댑터 (카메라/IAP/공유/저장 + 브라우저 폴백)
-    supabase.ts           # 커플 궁합용 Supabase 클라이언트 + CRUD (env 없으면 null, 기능 자동 숨김)
     reading/
       seed.ts             # 이미지 해시 → 시드 RNG (결정론)
-      content.ts          # ⭐ 개인 손금 콘텐츠 라이브러리 (여기만 늘리면 결과 변주↑)
+      content.ts          # ⭐ 콘텐츠 라이브러리 (여기만 늘리면 결과 변주↑)
       engine.ts           # 시드 → Reading 생성
-      coupleContent.ts    # ⭐ 궁합 콘텐츠 라이브러리
-      coupleEngine.ts     # 두 시드 결합 → CoupleReading 생성
     products.ts           # ⭐ IAP 상품 카탈로그 (sku, 가격 표시)
-    storage.ts            # 결제/해제 상태 (localStorage)
+    storage.ts            # 결제/해제 상태 + 마지막 결과 저장(localStorage) — 재방문 시 자동 복원
     shareImage.ts         # 공유 카드 canvas 렌더링
   ui/primitives.tsx       # 버튼·카드·배경 (심사 시 TDS로 교체)
-  screens/                # 각 화면 (Couple* 4개가 궁합 플로우)
+  screens/                # 각 화면
 apps-in-toss.config.ts    # 앱인토스 배포 설정 (appName·권한·webBundleDir) — @apps-in-toss/web-framework v3
-supabase/schema.sql       # 커플 궁합용 DB 스키마 (Supabase SQL Editor에서 실행)
-scripts/smoke.ts          # 엔진 스모크 테스트 (개인 + 궁합)
+scripts/smoke.ts          # 엔진 스모크 테스트
 .github/workflows/deploy.yml  # Pages 자동 배포 (GitHub Pages 전용, ait와 무관)
 ```
 
@@ -119,31 +117,9 @@ git add -A && git commit -m "..." && git push
 
 카메라/IAP/공유/저장은 `bridge/index.ts`가 실제 토스 앱 WebView 안에서 SDK를 감지해 네이티브로 호출하고, 그 밖(브라우저)에선 자동 폴백함.
 
-## 6-1. 커플 궁합 리포트 — ✅ 완료 (Supabase 연결 + 실제 2인 테스트까지 검증됨)
-
-이 프로젝트에서 처음으로 백엔드(Supabase)가 필요한 기능. 설계 원칙:
-- **초대자만 결제**, 파트너는 링크만 열면 무료
-- **손바닥 사진 원본은 서버로 안 감** — 각자 기기에서 로컬로 계산한 시드(해시 문자열)만 Supabase에 저장
-- **초대자의 개인 결과는 안 바뀜** — 궁합 진입 시 재촬영 없이 방금 본 `reading`을 그대로 재사용. 재촬영은 파트너만 함(그쪽은 "다시 찍기"가 아니라 "처음 찍기"라 문제 없음)
-
-**흐름:**
-1. 결과 화면 → "💌 커플 궁합 보기" → [CoupleInviteScreen](src/screens/CoupleInviteScreen.tsx)에서 결제(`PRODUCTS.coupleReport`) → Supabase에 초대(inviter 시드만) 생성 → 범용 URL 링크(`?invite={id}`) 공유 + 3초 간격 폴링으로 대기
-2. 파트너가 링크 열면 → [CoupleJoinFlow](src/screens/CoupleJoinFlow.tsx) → 자기 손바닥 촬영(로컬에서 개인 `Reading` 생성) → Supabase에 파트너 시드 업데이트
-3. 양쪽 시드가 모이면 [generateCoupleReading](src/lib/reading/coupleEngine.ts)이 **두 시드를 정렬 후 결합**해 새 시드를 만들고, 그걸로 궁합 콘텐츠 조립(개인 엔진과 동일한 $0·결정론적 방식 — 서버 연산 없음, 누가 초대했는지와 무관하게 항상 같은 결과)
-4. 초대자는 폴링이 완료를 감지하면, 파트너는 촬영 직후 곧바로 [CoupleResultScreen](src/screens/CoupleResultScreen.tsx)으로 각자 진입
-
-**완료 상태:** Supabase 프로젝트(`palmlab`, Project ID `qasgpachnvupkoecjjom`) 생성 완료 → `schema.sql` 실행 완료 → 로컬 `.env` + GitHub Actions secrets(`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`) 등록 완료 → **브라우저 두 탭으로 실제 초대 생성 → 파트너 참여 → 양쪽 다 같은 궁합 결과 확인**까지 실제 DB로 검증 완료. 값이 없으면 `isCoupleFeatureAvailable()`이 false를 반환해 "궁합 보기" 카드가 자동 숨김되는 안전장치도 그대로 유지.
-
-**참고:** Supabase의 API 키 체계가 최근 바뀌어서, 콘솔에 "anon key" 대신 **"Publishable key"**(`sb_publishable_...`)로 표시됨 — 이름만 다르고 역할·`createClient()` 사용법은 완전히 동일(호환 확인됨).
-
-**알려진 한계 (v1, 의도적으로 단순화):**
-- RLS가 인증 없이 "id를 아는 사람 누구나 읽기/쓰기 가능" 방식(비밀 URL 신뢰 모델). 실명 인증 아님 — 재미 목적 MVP 수준의 리스크로 판단.
-- 초대자가 "대기 중" 화면에서 새로고침/앱을 나가면 `inviteId`를 잃어버림(세션에만 존재, localStorage 미저장). 나중에 개선하면 좋음.
-- 오래된 미완료 초대 자동 정리(TTL) 없음 — 필요해지면 Supabase pg_cron이나 수동 정리로 추가.
-
 ## 7. 다음 로드맵
 
-- ✅ **커플 궁합 리포트** — 코드 구현 완료, Supabase 프로젝트 연결만 남음 (아래 6-1 참고)
+- **커플 궁합 리포트** — 한 번 전체 구현(Supabase 연동 + 2인 실기 테스트까지 완료)했다가, 복잡도 대비 우선순위가 낮다고 판단해 **의도적으로 롤백**함(9번 참고). 나중에 다시 붙일 때는 git 히스토리(커밋 메시지에 "커플 궁합"으로 검색)에서 거의 그대로 복원 가능. 당시 만들어둔 Supabase 프로젝트(`palmlab`, Project ID `qasgpachnvupkoecjjom`)가 남아있을 수 있음 — 재사용하거나, 안 쓸 거면 콘솔에서 직접 삭제해도 됨(무료 티어라 방치해도 비용은 없음).
 - **오늘의 손금 운세** — 매일 갱신, 재방문 장치
 - **토스 로그인 / 푸시 알림**
 - **서버 영수증 검증** — 현재 결제 지급은 로컬(localStorage). 실제 서비스는 서버 검증 보강 필요.
@@ -152,7 +128,6 @@ git add -A && git commit -m "..." && git push
 ## 8. 사람이 직접 해야 하는 것 (코드로 대체 불가)
 
 - ~~앱인토스 개발자센터에서 미니앱 등록 → `appName` 확보~~ ✅ 완료 (`palmlab`)
-- ~~Supabase 프로젝트 생성 + 연결~~ ✅ 완료
 - **테스트 배포**: 콘솔(앱인토스 개발자센터 → 워크스페이스 → API 키 발급) → 로컬 터미널에서
   ```bash
   npx ait token add   # API 키 붙여넣기 (대화형 프롬프트, ~/.ait/credentials에 저장됨 — 저장소와 무관)
@@ -177,6 +152,8 @@ git add -A && git commit -m "..." && git push
 - **`@apps-in-toss/devtools`가 실기기 없이 네이티브 SDK를 mock으로 완벽 대체**해줌 — `npm run dev` 화면 우측 하단 "AIT" 버튼. 카메라 촬영이 파일선택 다이얼로그 없이 즉시 mock 이미지를 반환하고, IAP 결제·이미지 저장도 실제 브릿지 코드 경로로 동작·검증 가능. 프로덕션 빌드에선 0바이트로 자동 제외됨. 앞으로 브릿지 관련 기능 만들 때 이걸로 먼저 검증할 것.
 - **`@apps-in-toss/web-framework`를 실제 dependency로 설치한 뒤로, `import()` 자체는 토스 웹뷰 밖(GitHub Pages 등)에서도 항상 성공함** — 함수는 존재하지만 호출하면 "토스 웹뷰 환경이 아니에요" 런타임 에러를 던짐. 예전엔 패키지 미설치라 `import()`가 항상 실패해서 자동으로 브라우저 폴백이 됐는데, 설치 후엔 그 안전장치가 사라짐. `loadSdk()`에 `production && !isInToss()`면 아예 시도 안 하는 가드를 추가해서 해결(dev는 devtools mock이 모듈 자체를 치환하므로 영향 없음). **실기기 없이 로컬 devtools mock으로만 검증하면 이런 버그를 못 잡는다** — `vite build && vite preview`로 실제 프로덕션 빌드를 반드시 별도로 재현 테스트해야 함(이번에 그렇게 해서 발견).
 - **`bridge/index.ts`의 `Share.share(payload)` 호출은 실제 v3 SDK에 없는 메서드였음** — v3엔 `Share.sendMessage({ message: string })` 하나뿐(텍스트만, 파일 첨부 불가). SDK 미설치 상태로 작성돼서 지금까지 안 걸렸던 버그. 이관하며 devtools mock 타입 정의(`node_modules/@apps-in-toss/web-framework/dist/index.d.ts`)를 직접 읽고 맞춰 고침 — 공식 문서(WebFetch 요약)보다 **설치된 패키지의 `.d.ts`가 가장 정확한 소스**였음.
+- **커플 궁합 리포트를 만들었다가(Supabase 연동, 2인 실기 테스트까지 통과) 다시 통째로 롤백함.** 기능 자체는 잘 동작했지만, "결제 후 대기 중 나갔다 들어오면 복원되는지" 같은 엣지 케이스를 챙기다 보니 상태머신이 급격히 복잡해졌고(초대자/파트너 두 역할 × pending/completed 두 상태 × 재방문 케이스), 개인 손금 하나만으로도 아직 검증할 게 많은 단계에서 백엔드까지 얹는 건 우선순위가 아니라고 판단해 (사람 쪽) 되돌리기로 결정함. **교훈: 기능을 다 만들고 나서도 "지금 이게 최우선인가"를 다시 물어볼 것 — 특히 새 인프라(백엔드)가 필요한 기능은 되돌리는 비용도 있으니, 만들기 전에 한 번 더 스코프를 확인하는 게 나음.** 코드는 git 히스토리에 온전히 남아있어 필요할 때 그대로 복원 가능.
+- **"결제 후 나갔다 들어오면 결과가 사라진다"는 실제 사용자 피드백으로 나온 문제.** `Reading` 자체가 메모리에만 있고 저장이 안 됐던 게 원인 — `hasEntitlement(readingId, sku)`로 결제 여부는 저장되지만, 정작 그 `readingId`에 해당하는 콘텐츠 자체를 복원할 방법이 없었음. `storage.ts`에 `saveLastReading`/`getLastReading`을 추가해 마지막 결과 자체를 저장하고, 앱 시작 시 자동 복원하도록 고침 (사진 원본은 여전히 저장 안 함 — 계산된 결과 텍스트만).
 
 ---
 _이 문서를 새 세션 Claude에게 먼저 읽히면 맥락을 빠르게 잡습니다._

@@ -2,7 +2,7 @@
 // 실제 상품/가격은 앱인토스 개발자센터 콘솔에서 등록하고, sku가 일치해야 합니다.
 // 여기 priceLabel/originalLabel은 화면 표시(가격 앵커링)용입니다.
 
-export type ProductKey = 'reportFull' | 'dailyFortune' | 'coupleReport';
+export type ProductKey = 'reportFull' | 'dailyFortune';
 
 export interface Product {
   key: ProductKey;
@@ -32,14 +32,6 @@ export const PRODUCTS: Record<ProductKey, Product> = {
     name: '오늘의 손금 운세',
     priceLabel: '₩1,200',
     blurb: '매일 갱신되는 오늘의 손금 기운',
-    type: 'consumable',
-  },
-  coupleReport: {
-    key: 'coupleReport',
-    sku: 'palm_couple_report_v1',
-    name: '커플 궁합 리포트',
-    priceLabel: '₩3,900',
-    blurb: '두 사람의 손금을 비교하는 궁합 분석 (초대자만 결제)',
     type: 'consumable',
   },
 };
