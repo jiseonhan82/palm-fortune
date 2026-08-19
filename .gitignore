@@ -19,3 +19,12 @@ yarn-error.log*
 # 앱인토스 빌드 산출물 (ait build) — 로컬/CI에서 매번 생성, 커밋 대상 아님
 # (배포 토큰은 프로젝트 밖 ~/.ait/credentials 에 저장되므로 이 저장소와 무관)
 *.ait
+
+# mTLS/TLS 인증서 · 개인키 — 이 저장소는 public이라 절대 커밋 금지
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+mTLS_인증서*/
+mTLS_인증서*.zip
