@@ -6,7 +6,7 @@ import { PRODUCTS } from '../lib/products';
 import { grantEntitlement } from '../lib/storage';
 import { theme } from '../theme';
 import type { Reading } from '../types';
-import { Badge, Button, Card, Screen } from '../ui/primitives';
+import { Button, Card, Screen } from '../ui/primitives';
 
 export function PaywallScreen({
   reading,
@@ -82,19 +82,11 @@ export function PaywallScreen({
 
       <div css={css`flex: 1;`} />
 
-      {/* 가격 앵커링 */}
+      {/* 가격 */}
       <div css={css`text-align: center; margin: 20px 0 12px;`}>
-        <Badge tone="gold">🎉 첫 구매 특가</Badge>
-        <div css={css`margin-top: 10px; display: flex; align-items: baseline; justify-content: center; gap: 10px;`}>
-          {product.originalLabel && (
-            <span css={css`font-size: 16px; color: ${theme.color.textDim}; text-decoration: line-through;`}>
-              {product.originalLabel}
-            </span>
-          )}
-          <span css={css`font-size: 32px; font-weight: 800; color: ${theme.color.goldSoft};`}>
-            {product.priceLabel}
-          </span>
-        </div>
+        <span css={css`font-size: 32px; font-weight: 800; color: ${theme.color.goldSoft};`}>
+          {product.priceLabel}
+        </span>
         <p css={css`margin: 6px 0 0; font-size: 12px; color: ${theme.color.textDim};`}>
           1회 결제 · 이 손금 결과에 대해 계속 열람 가능
         </p>

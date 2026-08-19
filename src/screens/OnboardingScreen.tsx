@@ -42,6 +42,9 @@ export function OnboardingScreen({ onStart }: { onStart: () => void }) {
           <br />
           희귀 손금부터 오늘의 운세까지, 지금 확인해보세요.
         </p>
+        <p css={css`margin: 8px 0 0; font-size: 12px; color: ${theme.color.textDim};`}>
+          🖐️ 왼손 · 오른손 아무 손이나 상관없어요
+        </p>
 
         <ul
           css={css`

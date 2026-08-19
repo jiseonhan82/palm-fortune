@@ -94,11 +94,23 @@ export function ResultScreen({
           📸 결과 이미지로 공유하기
         </Button>
         <Button variant="ghost" onClick={onRestart}>
-          다시 촬영하기
+          🖐️ 다른 손도 촬영해보기
         </Button>
-        <p css={css`margin: 6px 0 0; font-size: 11px; color: ${theme.color.textDim}; text-align: center;`}>
-          ※ 다시 촬영하면 각도·조명 차이로 풀이가 달라질 수 있어요
+        <p
+          css={css`
+            margin: 6px 0 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: ${theme.color.gold};
+            text-align: center;
+            line-height: 1.5;
+          `}
+        >
+          ⚠️ 지금 이 화면을 꼭 저장해두세요. 다른 손을 촬영하면 이 결과는 사라지고,
           <br />
+          다시 보려면 재결제가 필요해요.
+        </p>
+        <p css={css`margin: 6px 0 0; font-size: 11px; color: ${theme.color.textDim}; text-align: center;`}>
           본 콘텐츠는 오락 목적이며, 의학·재정적 조언이 아니에요.
         </p>
       </div>
