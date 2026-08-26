@@ -82,13 +82,6 @@ export function PaywallScreen({
 
       <div css={css`flex: 1;`} />
 
-      {/* 가격 */}
-      <div css={css`text-align: center; margin: 20px 0 12px;`}>
-        <span css={css`font-size: 32px; font-weight: 800; color: ${theme.color.goldSoft};`}>
-          {product.priceLabel}
-        </span>
-      </div>
-
       {error && (
         <p css={css`color: ${theme.color.danger}; font-size: 13px; text-align: center; margin: 0 0 10px;`}>{error}</p>
       )}
