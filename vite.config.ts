@@ -21,6 +21,6 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
-  server: { host: true, port: 5173, allowedHosts: true },
+  server: { host: true, port: 5182, allowedHosts: true },
   preview: { host: true, port: 4173, allowedHosts: true },
 });
